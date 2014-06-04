@@ -16,7 +16,7 @@ module Merit
 
     def log_merit_action
       Merit::Action.create(
-        user_id:       send(Merit.current_user_method).try(:id),
+        user_id:       send(Merit.current_user_method) ? send(Merit.current_user_method).try(:id) : nil,
         action_method: action_name,
         action_value:  params[:value],
         had_errors:    had_errors?,

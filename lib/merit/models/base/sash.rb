@@ -34,10 +34,10 @@ module Merit
       def add_points(num_points, options = {})
         point = Merit::Score::Point.new
         point.num_points = num_points
-        scores
-          .where(category: options[:category] || 'default')
-          .first_or_create
-          .score_points << point
+        #Hack because we have not upgraded to Mongoid 3
+        scores = Merit::Score.where(category: options[:category] || 'default').first
+        scores = Merit::Score.create(category: options[:category] || 'default') unless scores
+        scores.score_points << point
         point
       end
 
