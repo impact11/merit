@@ -11,9 +11,13 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120318022220) do
+ActiveRecord::Schema.define(:version => 20140211144001) do
 
-  create_table "badges_sashes", :id => false, :force => true do |t|
+  create_table "addresses", :force => true do |t|
+    t.integer "user_id"
+  end
+
+  create_table "badges_sashes", :force => true do |t|
     t.integer  "badge_id"
     t.integer  "sash_id"
     t.boolean  "notified_user", :default => false
@@ -31,19 +35,40 @@ ActiveRecord::Schema.define(:version => 20120318022220) do
     t.integer  "votes",      :default => 0
     t.datetime "created_at",                :null => false
     t.datetime "updated_at",                :null => false
+    t.integer  "sash_id"
+    t.integer  "level",      :default => 0
   end
 
   create_table "merit_actions", :force => true do |t|
     t.integer  "user_id"
     t.string   "action_method"
     t.integer  "action_value"
-    t.boolean  "had_errors"
+    t.boolean  "had_errors",    :default => false
     t.string   "target_model"
     t.integer  "target_id"
     t.boolean  "processed",     :default => false
-    t.string   "log"
     t.datetime "created_at",                       :null => false
     t.datetime "updated_at",                       :null => false
+  end
+
+  create_table "merit_activity_logs", :force => true do |t|
+    t.integer  "action_id"
+    t.string   "related_change_type"
+    t.integer  "related_change_id"
+    t.string   "description"
+    t.datetime "created_at"
+  end
+
+  create_table "merit_score_points", :force => true do |t|
+    t.integer  "score_id"
+    t.integer  "num_points", :default => 0
+    t.string   "log"
+    t.datetime "created_at"
+  end
+
+  create_table "merit_scores", :force => true do |t|
+    t.integer "sash_id"
+    t.string  "category", :default => "default"
   end
 
   create_table "sashes", :force => true do |t|
@@ -56,7 +81,6 @@ ActiveRecord::Schema.define(:version => 20120318022220) do
     t.datetime "created_at",                :null => false
     t.datetime "updated_at",                :null => false
     t.integer  "sash_id"
-    t.integer  "points",     :default => 0
     t.integer  "level",      :default => 0
   end
 

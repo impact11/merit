@@ -1,48 +1,67 @@
 module Merit
-  # This module sets up an after_filter to update merit_actions table.
-  # It executes on every action, and checks rules only if
-  # 'controller_name#action_name' has defined badge or point rules
+  # Sets up an app-wide after_filter, and inserts merit_action entries if
+  # there are defined rules (for badges or points) for current
+  # 'controller_path#action_name'
   module ControllerExtensions
     def self.included(base)
       base.after_filter do |controller|
-        action      = "#{controller_name}\##{action_name}"
-        badge_rules = BadgeRules.new
-        point_rules = PointRules.new
-        if badge_rules.defined_rules[action].present? || point_rules.actions_to_point[action].present?
-          target_id = params[:id]
-          # TODO: target_object should be configurable (now it's singularized controller name)
-          target_object = instance_variable_get(:"@#{controller_name.singularize}")
-          # id nil, or string (friendly_id); target_object found
-          if target_object.present? && (target_id.nil? || !(target_id =~ /^[0-9]+$/))
-            target_id = target_object.try(:id)
-          end
-
-          # TODO: value should be configurable (now it's params[:value] set in the controller)
-          merit_action_id = MeritAction.create(
-            :user_id       => current_user.try(:id),
-            :action_method => action_name,
-            :action_value  => params[:value],
-            :had_errors    => target_object.try(:errors).try(:present?),
-            :target_model  => controller_name,
-            :target_id     => target_id
-          ).id
-
-          # Check rules in after_filter?
-          if Merit.checks_on_each_request
-            badge_rules.check_new_actions
-
-            # Show flash msg?
-            if (log = MeritAction.find(merit_action_id).log)
-              # Badges granted to current_user
-              granted = log.split('|').select{|log| log =~ /badge_granted_to_action_user/ }
-              granted.each do |badge|
-                badge_id = badge.split(':').last.to_i
-                flash[:merit] = t('merit.flashs.badge_granted', :badge => Badge.find(badge_id).name)
-              end
-            end
-          end
+        if rules_defined?
+          log_merit_action
+          Merit::Action.check_unprocessed if Merit.checks_on_each_request
         end
       end
+    end
+
+    private
+
+    def log_merit_action
+      Merit::Action.create(
+        user_id:       send(Merit.current_user_method).try(:id),
+        action_method: action_name,
+        action_value:  params[:value],
+        had_errors:    had_errors?,
+        target_model:  controller_path,
+        target_id:     target_id
+      ).id
+    end
+
+    def rules_defined?
+      RulesMatcher.new(controller_path, action_name).any_matching?
+    end
+
+    def had_errors?
+      target_object.respond_to?(:errors) && target_object.errors.try(:present?)
+    end
+
+    def target_object
+      target_obj = instance_variable_get(:"@#{controller_name.singularize}")
+      if target_obj.nil?
+        str = '[merit] No object found, you might need a ' \
+          "'@#{controller_name.singularize}' variable in " \
+          "'#{controller_path}_controller' if no reputation is applied. " \
+          'If you are using `model_name` option in the rule this is ok.'
+        Rails.logger.warn str
+      end
+      target_obj
+    end
+
+    def target_id
+      target_id = target_object.try(:id)
+      # If target_id is nil
+      # then use params[:id].
+      if target_id.nil? && send("check_#{Merit.orm}_id", params[:id])
+        target_id = params[:id]
+      end
+      target_id
+    end
+
+    # This check avoids trying to set a slug as integer FK
+    def check_active_record_id(id)
+      id.to_s =~ /^[0-9]+$/
+    end
+
+    def check_mongoid_id(id)
+      id.to_s =~ /^[0-9a-fA-F]{24}$/
     end
   end
 end
