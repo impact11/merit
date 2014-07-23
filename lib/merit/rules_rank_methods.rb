@@ -49,9 +49,8 @@ module Merit
         object.update_attribute rule.level_name, level
       end
     rescue => e
-    # rescue ActiveRecord::StatementInvalid
-      str = "Add #{rule.level_name} column to #{scoped_model.class.name}"
-      raise RankAttributeNotDefined, str
+      puts e.backtrace
+      raise Exception, e
     end
 
     def scope_to_promote(scope, level_name, level)
