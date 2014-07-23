@@ -48,7 +48,8 @@ module Merit
         next unless rule.applies?(object)
         object.update_attribute rule.level_name, level
       end
-    rescue ActiveRecord::StatementInvalid
+    rescue => e
+    # rescue ActiveRecord::StatementInvalid
       str = "Add #{rule.level_name} column to #{scoped_model.class.name}"
       raise RankAttributeNotDefined, str
     end
